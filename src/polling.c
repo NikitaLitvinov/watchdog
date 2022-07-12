@@ -12,15 +12,15 @@
 #include "polling.h"
 #include "process_handling.h"
 
-static inline void delete_timer(int *const timer_fd)
+static inline void close_fd(int *const fd)
 {
-    int ret = close(*timer_fd);
+    int ret = close(*fd);
 
     if (-1 == ret)
     {
-        printf("close(%d) failed. %s\n", *timer_fd, strerror(errno));
+        printf("close(%d) failed. %s\n", *fd, strerror(errno));
     }
-    *timer_fd = -1;
+    *fd = -1;
 }
 
 static int create_timer(int *const timer_fd, int const timer_interval)
@@ -49,23 +49,13 @@ static int create_timer(int *const timer_fd, int const timer_interval)
     if (0 > timerfd_settime(*timer_fd, TFD_TIMER_ABSTIME, &timer, NULL))
     {
         printf("timerfd_settime failed. %s\n", strerror(errno));
+        close_fd(timer_fd);
         return EXIT_FAILURE;
     }
 
     printf("Timer create success!\n");
 
     return EXIT_SUCCESS;
-}
-
-static inline void delete_polling(int *const epoll_fd)
-{
-    int ret = close(*epoll_fd);
-
-    if (-1 == ret)
-    {
-        printf("close(%d) failed. %s\n", *epoll_fd, strerror(errno));
-    }
-    *epoll_fd = -1;
 }
 
 static int create_poll(int *const epoll_fd, int const *const timer_fd,
@@ -85,7 +75,7 @@ static int create_poll(int *const epoll_fd, int const *const timer_fd,
     if (0 < epoll_ctl(*epoll_fd, EPOLL_CTL_ADD, *timer_fd, &event))
     {
         printf("epoll_ctl() for timer fd failed. %s\n", strerror(errno));
-        delete_polling(epoll_fd);
+        close_fd(epoll_fd);
         return EXIT_FAILURE;
     }
 
@@ -95,7 +85,7 @@ static int create_poll(int *const epoll_fd, int const *const timer_fd,
     if (0 < epoll_ctl(*epoll_fd, EPOLL_CTL_ADD, *sig_fd, &event))
     {
         printf("epoll_ctl() for sig fd failed. %s\n", strerror(errno));
-        delete_polling(epoll_fd);
+        close_fd(epoll_fd);
         return EXIT_FAILURE;
     }
 
@@ -174,6 +164,7 @@ int polling_pid(pid_t const pid, int const timer_interval)
     if (EXIT_SUCCESS != ret)
     {
         printf("create_signal() failed.\n");
+        close_fd(&timer_fd);
         return ret;
     }
 
@@ -181,7 +172,8 @@ int polling_pid(pid_t const pid, int const timer_interval)
     if (EXIT_SUCCESS != ret)
     {
         printf("create_poll() failed.\n");
-        delete_timer(&timer_fd);
+        close_fd(&timer_fd);
+        close_fd(&sig_fd);
         return ret;
     }
 
@@ -193,9 +185,8 @@ int polling_pid(pid_t const pid, int const timer_interval)
         if (0 > read_events)
         {
             printf("epoll_wait() failed. %s\n", strerror(errno));
-            delete_polling(&epoll_fd);
-            delete_timer(&timer_fd);
-            return EXIT_FAILURE;
+            ret = EXIT_FAILURE;
+            break;
         }
         for (int i = 0; i < read_events; i++)
         {
@@ -238,8 +229,10 @@ int polling_pid(pid_t const pid, int const timer_interval)
     }
 
     printf("Finish polling\n");
-    delete_polling(&epoll_fd);
-    delete_timer(&timer_fd);
+    close_fd(&epoll_fd);
+    close_fd(&sig_fd);
+    close_fd(&timer_fd);
+
 
     return EXIT_SUCCESS;
 }
