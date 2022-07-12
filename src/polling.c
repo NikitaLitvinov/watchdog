@@ -10,6 +10,7 @@
 #include <sys/signalfd.h>
 
 #include "polling.h"
+#include "process_handling.h"
 
 static inline void delete_timer(int *const timer_fd)
 {
@@ -148,7 +149,7 @@ static int create_signal(int *const sig_fd)
     return EXIT_SUCCESS;
 }
 
-int polling_pid(int const timer_interval)
+int polling_pid(pid_t const pid, int const timer_interval)
 {
     enum
     {
@@ -184,7 +185,7 @@ int polling_pid(int const timer_interval)
         return ret;
     }
 
-    printf("Start polling\n");
+    printf("Start polling pid %d\n", pid);
 
     while (loop)
     {
@@ -207,7 +208,16 @@ int polling_pid(int const timer_interval)
                 }
                 else
                 {
-                    printf("Time out\n");
+                    bool is_alive = false;
+                    ret = check_process_alive(pid, &is_alive);
+                    if (EXIT_SUCCESS != ret)
+                    {
+                        printf("check_process_alive() failed.\n");
+                    }
+                    else
+                    {
+                        printf("Process %d is %s\n", pid, is_alive == true ? "alive" : "not alive");
+                    }
                 }
             }
             else if (events[i].data.fd == sig_fd)
