@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "polling.h"
+#include "process_handling.h"
 
 enum
 {
@@ -13,19 +14,22 @@ enum
 int main(int argc, char *argv[])
 {
     int ret = EXIT_SUCCESS;
-    pid_t pid = 0;
-
+    struct process_info process = {0};
     if (argc > 1)
     {
-        pid = atoi(argv[1]);
+        snprintf(process.cmd, sizeof(process.cmd) - 1, "%s", argv[1]);
     }
     else
     {
         printf("Input pid for check process\n");
         return EXIT_FAILURE;
     }
-
-    ret = polling_pid(pid, TIME_INTERVAL);
+    ret = start_process(&process);
+    if (EXIT_SUCCESS != ret)
+    {
+        return ret;
+    }
+    ret = polling_pid(&process, TIME_INTERVAL);
 
     return ret;
 }

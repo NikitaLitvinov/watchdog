@@ -10,7 +10,6 @@
 #include <sys/signalfd.h>
 
 #include "polling.h"
-#include "process_handling.h"
 
 static inline void close_fd(int *const fd)
 {
@@ -139,7 +138,7 @@ static int create_signal(int *const sig_fd)
     return EXIT_SUCCESS;
 }
 
-int polling_pid(pid_t const pid, int const timer_interval)
+int polling_pid(struct process_info *const process, int const timer_interval)
 {
     enum
     {
@@ -177,7 +176,7 @@ int polling_pid(pid_t const pid, int const timer_interval)
         return ret;
     }
 
-    printf("Start polling pid %d\n", pid);
+    printf("Start polling pid %d\n", process->pid);
 
     while (loop)
     {
@@ -200,14 +199,19 @@ int polling_pid(pid_t const pid, int const timer_interval)
                 else
                 {
                     bool is_alive = false;
-                    ret = check_process_alive(pid, &is_alive);
+                    ret = check_process_alive(process->pid, &is_alive);
                     if (EXIT_SUCCESS != ret)
                     {
                         printf("check_process_alive() failed.\n");
                     }
                     else
                     {
-                        printf("Process %d is %s\n", pid, is_alive == true ? "alive" : "not alive");
+                        printf("Process %d is %s\n", process->pid, is_alive == true ? "alive" : "not alive");
+                        if (false == is_alive)
+                        {
+                            printf("Restart %s\n", process->cmd);
+                            start_process(process);
+                        }
                     }
                 }
             }
@@ -222,6 +226,7 @@ int polling_pid(pid_t const pid, int const timer_interval)
                 {
                     printf("Catch signal %d\n", info.ssi_signo);
                     loop = false;
+                    stop_process(process);
                     break;
                 }
             }
