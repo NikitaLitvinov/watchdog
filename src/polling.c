@@ -119,6 +119,20 @@ static int create_signal(int *const sig_fd)
         return EXIT_FAILURE;
     }
 
+    ret = sigaddset(&sigset, SIGINT);
+    if (ret < 0)
+    {
+        printf("sigaddset(%s) failed. %s\n", strsignal(SIGQUIT), strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    ret = sigaddset(&sigset, SIGUSR1);
+    if (ret < 0)
+    {
+        printf("sigaddset(%s) failed. %s\n", strsignal(SIGQUIT), strerror(errno));
+        return EXIT_FAILURE;
+    }
+
     ret = sigprocmask(SIG_BLOCK, &sigset, NULL);
     if (ret < 0)
     {
@@ -237,7 +251,6 @@ int polling_pid(struct process_info *const process, int const timer_interval)
     close_fd(&epoll_fd);
     close_fd(&sig_fd);
     close_fd(&timer_fd);
-
 
     return EXIT_SUCCESS;
 }
