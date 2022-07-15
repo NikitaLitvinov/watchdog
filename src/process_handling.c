@@ -34,7 +34,7 @@ int check_process_alive(pid_t const pid, bool *const is_alive)
     return ret;
 }
 
-void stop_process(struct process_info const *const process)
+void stop_process(struct process_info *const process)
 {
     int ret = EXIT_SUCCESS;
 
@@ -43,6 +43,7 @@ void stop_process(struct process_info const *const process)
     {
         printf("kill() failed. %s\n", strerror(errno));
     }
+    process->running = false;
 }
 
 int start_process(struct process_info *const process)
@@ -63,6 +64,12 @@ int start_process(struct process_info *const process)
 
     char const *const sh = "/bin/sh";
     char *argv[] = {sh, "-c", process->cmd, NULL};
+
+    if (true == process->running)
+    {
+        printf("Warning. Process %s already running with PID %d!\n", process->cmd, process->pid);
+        return EXIT_SUCCESS;
+    }
 
     pid = vfork();
     if (pid < 0)
@@ -114,6 +121,7 @@ int start_process(struct process_info *const process)
     printf("PID for monitoring - %d\n", pid);
 
     process->pid = pid;
+    process->running = true;
 
     return EXIT_SUCCESS;
 }

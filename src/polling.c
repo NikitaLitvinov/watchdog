@@ -212,19 +212,22 @@ int polling_pid(struct process_info *const process, int const timer_interval)
                 }
                 else
                 {
-                    bool is_alive = false;
-                    ret = check_process_alive(process->pid, &is_alive);
-                    if (EXIT_SUCCESS != ret)
+                    if (true == process->running)
                     {
-                        printf("check_process_alive() failed.\n");
-                    }
-                    else
-                    {
-                        printf("Process %d is %s\n", process->pid, is_alive == true ? "alive" : "not alive");
-                        if (false == is_alive)
+                        bool is_alive = false;
+                        ret = check_process_alive(process->pid, &is_alive);
+                        if (EXIT_SUCCESS != ret)
                         {
-                            printf("Restart %s\n", process->cmd);
-                            start_process(process);
+                            printf("check_process_alive() failed.\n");
+                        }
+                        else
+                        {
+                            printf("Process %d is %s\n", process->pid, is_alive == true ? "alive" : "not alive");
+                            if (false == is_alive)
+                            {
+                                printf("Restart %s\n", process->cmd);
+                                start_process(process);
+                            }
                         }
                     }
                 }
@@ -239,9 +242,27 @@ int polling_pid(struct process_info *const process, int const timer_interval)
                 else
                 {
                     printf("Catch signal %d\n", info.ssi_signo);
-                    loop = false;
-                    stop_process(process);
-                    break;
+                    if (SIGUSR1 == info.ssi_signo)
+                    {
+                        if(true == process->running)
+                        {
+                            stop_process(process);
+                        }
+                        else
+                        {
+                            ret = start_process(process);
+                            if (EXIT_SUCCESS != ret)
+                            {
+                                loop = false;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        loop = false;
+                        stop_process(process);
+                        break;
+                    }
                 }
             }
         }
