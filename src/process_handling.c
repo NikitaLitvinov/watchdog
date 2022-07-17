@@ -37,7 +37,7 @@ void stop_process(struct process_info *const process)
 {
     int ret = EXIT_SUCCESS;
 
-    ret = kill(process->pid, SIGTERM);
+    ret = kill(process->pid, SIGKILL);
     if (0 > ret)
     {
         printf("kill() failed. %s\n", strerror(errno));
@@ -67,13 +67,13 @@ int start_process(struct process_info *const process)
     int ret = 0;
 
     pid = vfork();
-    if (pid < 0)
+    if (0 > pid)
     {
-        printf("vfork() failed\n");
+        printf("vfork() failed.\n");
         return EXIT_FAILURE;
     }
 
-    if (pid == 0)
+    if (0 == pid)
     {
         char *const cmd[] = {"/bin/sh", "-c", process->process_cmd, NULL};
         ret = execv("/bin/sh", cmd);
@@ -83,7 +83,7 @@ int start_process(struct process_info *const process)
     do
     {
         pid_wait = waitpid(pid, &ret, 0);
-        if (pid_wait <= -1 && errno != EINTR)
+        if (-1 >= pid_wait && errno != EINTR)
         {
             return EXIT_FAILURE;
         }
@@ -91,7 +91,7 @@ int start_process(struct process_info *const process)
 
     if (EXIT_SUCCESS != ret)
     {
-        printf("Can't start %s\n", process->process_name);
+        printf("Can't start %s ret code %d.\n", process->process_name, ret);
         return EXIT_FAILURE;
     }
 
@@ -101,14 +101,14 @@ int start_process(struct process_info *const process)
     result = popen(cmd_str, "r");
     if (NULL == result)
     {
-        printf("peopen() failed\n");
+        printf("peopen() failed.\n");
         return EXIT_FAILURE;
     }
 
     fgets_res = fgets(pid_str, PID_LEN, result);
     if (NULL == fgets_res)
     {
-        printf("Can't get PID for %s\n", process->process_name);
+        printf("Can't get PID for %s.\n", process->process_name);
         pclose(result);
         return EXIT_FAILURE;
     }

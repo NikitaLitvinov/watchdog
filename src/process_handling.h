@@ -4,11 +4,6 @@
 #include <limits.h>
 #include <stdbool.h>
 
-enum
-{
-    MAX_CMD_LEN = PATH_MAX,
-};
-
 struct process_info
 {
     char *process_name;

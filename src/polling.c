@@ -190,7 +190,7 @@ int polling_pid(struct process_info *const process, int const timer_interval)
         return ret;
     }
 
-    printf("Start polling pid %d\n", process->pid);
+    printf("Start polling process %s (PID %d).\n", process->process_name, process->pid);
 
     while (loop)
     {
@@ -222,11 +222,14 @@ int polling_pid(struct process_info *const process, int const timer_interval)
                         }
                         else
                         {
-                            printf("Process %d is %s\n", process->pid, is_alive == true ? "alive" : "not alive");
                             if (false == is_alive)
                             {
-                                printf("Restart %s\n", process->process_name);
-                                start_process(process);
+                                printf("Process %s is not alive. Try restart.\n", process->process_name);
+                                ret = start_process(process);
+                                if (EXIT_SUCCESS != ret)
+                                {
+                                    printf("start_process() failed.\n");
+                                }
                             }
                         }
                     }
@@ -241,7 +244,7 @@ int polling_pid(struct process_info *const process, int const timer_interval)
                 }
                 else
                 {
-                    printf("Catch signal %d\n", info.ssi_signo);
+                    printf("Catch signal %s\n", strsignal(info.ssi_signo));
                     if (SIGUSR1 == info.ssi_signo)
                     {
                         bool is_alive = false;
@@ -254,11 +257,17 @@ int polling_pid(struct process_info *const process, int const timer_interval)
                         {
                             if (true == is_alive && true == process->running)
                             {
+                                printf("Stop process %s by signal USR1\n", process->process_name);
                                 stop_process(process);
                             }
                             else
                             {
-                                start_process(process);
+                                printf("Start process %s by signal USR1.\n", process->process_name);
+                                ret = start_process(process);
+                                if (EXIT_SUCCESS != ret)
+                                {
+                                    printf("start_process() failed.\n");
+                                }
                             }
                         }
                     }
@@ -273,7 +282,8 @@ int polling_pid(struct process_info *const process, int const timer_interval)
         }
     }
 
-    printf("Finish polling\n");
+    printf("Finish polling.\n");
+
     close_fd(&epoll_fd);
     close_fd(&sig_fd);
     close_fd(&timer_fd);
