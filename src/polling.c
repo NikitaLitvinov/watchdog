@@ -199,6 +199,7 @@ int polling_pid(struct process_info *const process, int const timer_interval)
         {
             printf("epoll_wait() failed. %s\n", strerror(errno));
             ret = EXIT_FAILURE;
+            loop = false;
             break;
         }
         for (int i = 0; i < read_events; i++)
