@@ -2,13 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include "polling.h"
 #include "process_handling.h"
 
 enum
 {
-    TIME_INTERVAL = 5,
+    TIMEOUT = 5,
 };
 
 int argv_handling(int const argc, char *const *const argv, struct process_info *const process)
@@ -30,7 +31,7 @@ int argv_handling(int const argc, char *const *const argv, struct process_info *
 
         for (int i = 2; i < argc; ++i)
         {
-            len = strlen(argv[i]);
+            len += strlen(argv[i]);
         }
         process->process_cmd = malloc(len * sizeof(char) + argc);
         if (NULL == process->process_cmd)
@@ -57,6 +58,7 @@ int main(int argc, char **argv)
 {
     int ret = EXIT_SUCCESS;
     struct process_info process = {0};
+    bool need_restart = true;
 
     ret = argv_handling(argc, argv, &process);
     if (EXIT_SUCCESS != ret)
@@ -64,19 +66,27 @@ int main(int argc, char **argv)
         return ret;
     }
 
-    ret = start_process(&process);
-    if (EXIT_SUCCESS != ret)
+    printf("Watchdog start.\n");
+
+    while (true)
     {
-        free(process.process_cmd);
-        return ret;
+        ret = start_process(&process);
+        if (EXIT_SUCCESS != ret)
+        {
+            break;
+        }
+
+        printf("Process will be restart with timeout %d.\n"
+               "To stop restart and exit press Ctrl-C.\n", TIMEOUT);
+
+        ret = timer_for_restart(TIMEOUT, &need_restart);
+        if (EXIT_SUCCESS != ret || false == need_restart)
+        {
+            break;
+        }
     }
 
-    ret = polling_pid(&process, TIME_INTERVAL);
-    if (EXIT_SUCCESS != ret)
-    {
-        free(process.process_cmd);
-        return ret;
-    }
+    printf("Watchdog finish.\n");
 
     free(process.process_cmd);
 

@@ -3,6 +3,6 @@
 
 #include "process_handling.h"
 
-int polling_pid(struct process_info *process, int timer_interval);
+int timer_for_restart(int timeout, bool *need_restart);
 
 #endif //SIMPLE_WATCHDOG_POLLING_H
