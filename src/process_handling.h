@@ -4,11 +4,17 @@
 #include <limits.h>
 #include <stdbool.h>
 
+enum
+{
+    MAX_CMD_LEN = PATH_MAX,
+};
+
 struct process_info
 {
-    char cmd[PATH_MAX];
+    char *process_name;
     pid_t pid;
     bool running;
+    char *process_cmd;
 };
 
 int check_process_alive(pid_t pid, bool *is_alive);

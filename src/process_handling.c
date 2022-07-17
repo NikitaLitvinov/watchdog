@@ -14,7 +14,6 @@ int check_process_alive(pid_t const pid, bool *const is_alive)
 
     *is_alive = true;
 
-    // sig 0 - checking process alive.
     ret = kill(pid, 0);
     if (0 > ret)
     {
@@ -43,43 +42,41 @@ void stop_process(struct process_info *const process)
     {
         printf("kill() failed. %s\n", strerror(errno));
     }
+
+    printf("Process %d stop successfully!\n", process->pid);
+
     process->running = false;
+    process->pid = -1;
 }
 
 int start_process(struct process_info *const process)
 {
     enum
     {
-        CMD_BUFFER_SIZE = PATH_MAX + 8,
+        // strlen("pidof ") = 6 + \0
+        CMD_BUFFER_SIZE = PATH_MAX + 7,
         // 4194304 + \0.
         PID_LEN = 8,
     };
     char cmd_str[CMD_BUFFER_SIZE] = {0};
-    char line[PID_LEN] = {0};
-    pid_t pid = -1;
-    FILE *result = NULL;
+    char pid_str[PID_LEN] = {0};
     char *fgets_res = NULL;
+    FILE *result = NULL;
     pid_t pid_wait = -1;
+    pid_t pid = -1;
     int ret = 0;
-
-    char const *const sh = "/bin/sh";
-    char *argv[] = {sh, "-c", process->cmd, NULL};
-
-    if (true == process->running)
-    {
-        printf("Warning. Process %s already running with PID %d!\n", process->cmd, process->pid);
-        return EXIT_SUCCESS;
-    }
 
     pid = vfork();
     if (pid < 0)
     {
+        printf("vfork() failed\n");
         return EXIT_FAILURE;
     }
 
     if (pid == 0)
     {
-        ret = execv(sh, argv);
+        char *const cmd[] = {"/bin/sh", "-c", process->process_cmd, NULL};
+        ret = execv("/bin/sh", cmd);
         _exit(ret);
     }
 
@@ -92,36 +89,38 @@ int start_process(struct process_info *const process)
         }
     } while (pid_wait != pid);
 
-    if (0 != ret)
+    if (EXIT_SUCCESS != ret)
     {
+        printf("Can't start %s\n", process->process_name);
         return EXIT_FAILURE;
     }
 
     // Не можем использовать PID ребенка, т.к. отслеживаемый процесс демонизируется и его PID не равен PID ребенка.
-    snprintf(cmd_str, CMD_BUFFER_SIZE - 1, "pidof %s", process->cmd);
+    snprintf(cmd_str, CMD_BUFFER_SIZE - 1, "pidof %s", process->process_name);
 
     result = popen(cmd_str, "r");
     if (NULL == result)
     {
-        printf("Can't start %s\n", process->cmd);
+        printf("peopen() failed\n");
         return EXIT_FAILURE;
     }
 
-    fgets_res = fgets(line, PID_LEN, result);
+    fgets_res = fgets(pid_str, PID_LEN, result);
     if (NULL == fgets_res)
     {
-        printf("Can't get PID for %s\n", process->cmd);
+        printf("Can't get PID for %s\n", process->process_name);
+        pclose(result);
         return EXIT_FAILURE;
     }
 
-    pid = strtoul(line, NULL, 10);
+    pid = strtoul(pid_str, NULL, 10);
 
     pclose(result);
 
-    printf("PID for monitoring - %d\n", pid);
-
     process->pid = pid;
     process->running = true;
+
+    printf("Process %s (PID %d) start successfully!\n", process->process_name, process->pid);
 
     return EXIT_SUCCESS;
 }
