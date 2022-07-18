@@ -22,7 +22,7 @@ mkdir cmake-build && cd cmake-build && cmake .. && make
 ## Пример работы
 Запустим приложение lighttpd:
 ```shell
-/home/nik/projects/lighttpd-1.4.65/src/lighttpd -m /home/nik/projects/lighttpd-1.4.65/src/.libs -D -f /home/nik/projects/lighttpd-1.4.65/lighttpd.conf
+./watchdog start /home/nik/projects/lighttpd-1.4.65/src/lighttpd -m /home/nik/projects/lighttpd-1.4.65/src/.libs -D -f /home/nik/projects/lighttpd-1.4.65/lighttpd.conf
 Watchdog start.
 Process /home/nik/projects/lighttpd-1.4.65/src/lighttpd start.
 2022-07-18 12:24:05: (server.c.1588) server started (lighttpd/1.4.65)
