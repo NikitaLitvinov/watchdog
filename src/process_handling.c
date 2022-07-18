@@ -7,13 +7,17 @@
 
 #include "process_handling.h"
 
+void signal_handling_do_noting(int const sig __attribute__((unused)))
+{
+}
+
 int start_process(struct process_info *const process)
 {
     pid_t pid_wait = -1;
     pid_t pid = -1;
     int ret = 0;
 
-    pid = fork();
+    pid = vfork();
     if (0 > pid)
     {
         printf("fork() failed.\n");
@@ -28,6 +32,9 @@ int start_process(struct process_info *const process)
         ret = execv("/bin/sh", cmd);
         _exit(ret);
     }
+
+    // Ignore SIGINT in parent to process it in child.
+    signal(SIGINT, &signal_handling_do_noting);
 
     do
     {

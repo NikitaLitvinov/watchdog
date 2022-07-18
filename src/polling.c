@@ -138,6 +138,42 @@ static int create_signal(int *const sig_fd)
     return EXIT_SUCCESS;
 }
 
+static int delete_signal_handling(void)
+{
+        int ret = EXIT_SUCCESS;
+        sigset_t sigset = {0};
+
+        ret = sigemptyset(&sigset);
+        if (ret < 0)
+        {
+            printf("sigemptyset() failed. %s\n", strerror(errno));
+            return EXIT_FAILURE;
+        }
+
+        ret = sigaddset(&sigset, SIGTERM);
+        if (ret < 0)
+        {
+            printf("sigaddset(%s) failed. %s\n", strsignal(SIGTERM), strerror(errno));
+            return EXIT_FAILURE;
+        }
+
+        ret = sigaddset(&sigset, SIGINT);
+        if (ret < 0)
+        {
+            printf("sigaddset(%s) failed. %s\n", strsignal(SIGQUIT), strerror(errno));
+            return EXIT_FAILURE;
+        }
+
+        ret = sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+        if (ret < 0)
+        {
+            printf("sigprocmask() failed. %s\n", strerror(errno));
+            return EXIT_FAILURE;
+        }
+
+        return ret;
+}
+
 int timer_for_restart(int const timeout, bool *const need_restart)
 {
     enum
@@ -217,6 +253,10 @@ int timer_for_restart(int const timeout, bool *const need_restart)
     close_fd(&epoll_fd);
     close_fd(&sig_fd);
     close_fd(&timer_fd);
-
+    ret = delete_signal_handling();
+    if (EXIT_SUCCESS != ret)
+    {
+        printf("delete_signal_handling() failed.\n");
+    }
     return EXIT_SUCCESS;
 }
