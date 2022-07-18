@@ -99,28 +99,21 @@ static int create_signal(int *const sig_fd)
     sigset_t sigset = {0};
 
     ret = sigemptyset(&sigset);
-    if (ret < 0)
+    if (0 > ret)
     {
         printf("sigemptyset() failed. %s\n", strerror(errno));
         return EXIT_FAILURE;
     }
 
-    ret = sigaddset(&sigset, SIGTERM);
-    if (ret < 0)
-    {
-        printf("sigaddset(%s) failed. %s\n", strsignal(SIGTERM), strerror(errno));
-        return EXIT_FAILURE;
-    }
-
     ret = sigaddset(&sigset, SIGINT);
-    if (ret < 0)
+    if (0 > ret)
     {
         printf("sigaddset(%s) failed. %s\n", strsignal(SIGQUIT), strerror(errno));
         return EXIT_FAILURE;
     }
 
     ret = sigprocmask(SIG_BLOCK, &sigset, NULL);
-    if (ret < 0)
+    if (0 > ret)
     {
         printf("sigprocmask() failed. %s\n", strerror(errno));
         return EXIT_FAILURE;
@@ -140,38 +133,31 @@ static int create_signal(int *const sig_fd)
 
 static int delete_signal_handling(void)
 {
-        int ret = EXIT_SUCCESS;
-        sigset_t sigset = {0};
+    int ret = EXIT_SUCCESS;
+    sigset_t sigset = {0};
 
-        ret = sigemptyset(&sigset);
-        if (ret < 0)
-        {
-            printf("sigemptyset() failed. %s\n", strerror(errno));
-            return EXIT_FAILURE;
-        }
+    ret = sigemptyset(&sigset);
+    if (0 > ret)
+    {
+        printf("sigemptyset() failed. %s\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
 
-        ret = sigaddset(&sigset, SIGTERM);
-        if (ret < 0)
-        {
-            printf("sigaddset(%s) failed. %s\n", strsignal(SIGTERM), strerror(errno));
-            return EXIT_FAILURE;
-        }
+    ret = sigaddset(&sigset, SIGINT);
+    if (0 > ret)
+    {
+        printf("sigaddset(%s) failed. %s\n", strsignal(SIGQUIT), strerror(errno));
+        return EXIT_FAILURE;
+    }
 
-        ret = sigaddset(&sigset, SIGINT);
-        if (ret < 0)
-        {
-            printf("sigaddset(%s) failed. %s\n", strsignal(SIGQUIT), strerror(errno));
-            return EXIT_FAILURE;
-        }
+    ret = sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+    if (0 > ret)
+    {
+        printf("sigprocmask() failed. %s\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
 
-        ret = sigprocmask(SIG_UNBLOCK, &sigset, NULL);
-        if (ret < 0)
-        {
-            printf("sigprocmask() failed. %s\n", strerror(errno));
-            return EXIT_FAILURE;
-        }
-
-        return ret;
+    return ret;
 }
 
 int timer_for_restart(int const timeout, bool *const need_restart)
@@ -185,6 +171,7 @@ int timer_for_restart(int const timeout, bool *const need_restart)
     int timer_fd = 0;
     int epoll_fd = 0;
     int sig_fd = 0;
+    int read_events = 0;
     struct epoll_event events[MAX_EVENT_COUNT] = {0};
 
     ret = create_timer(&timer_fd, timeout);
@@ -211,14 +198,15 @@ int timer_for_restart(int const timeout, bool *const need_restart)
         return ret;
     }
 
-    printf("Start %d timeout.\n", timeout);
+    printf("Start timeout - %d sec.\n", timeout);
 
-    int read_events = epoll_wait(epoll_fd, events, MAX_EVENT_COUNT, -1);
+    read_events = epoll_wait(epoll_fd, events, MAX_EVENT_COUNT, -1);
     if (0 > read_events)
     {
         printf("epoll_wait() failed. %s\n", strerror(errno));
         ret = EXIT_FAILURE;
     }
+
     for (int i = 0; i < read_events; i++)
     {
         if (events[i].data.fd == timer_fd)
@@ -226,10 +214,11 @@ int timer_for_restart(int const timeout, bool *const need_restart)
             size_t res = 0;
             if (0 > read(timer_fd, &res, sizeof(res)))
             {
-                printf("read() failed. %s\n", strerror(errno));
+                printf("read(timer_fd) failed. %s\n", strerror(errno));
             }
             else
             {
+                printf("Timeout!\n");
                 *need_restart = true;
             }
         }
@@ -238,7 +227,7 @@ int timer_for_restart(int const timeout, bool *const need_restart)
             struct signalfd_siginfo info = {0};
             if (0 > read(sig_fd, &info, sizeof(info)))
             {
-                printf("read() failed. %s\n", strerror(errno));
+                printf("read(sig_fd) failed. %s\n", strerror(errno));
             }
             else
             {
@@ -248,15 +237,17 @@ int timer_for_restart(int const timeout, bool *const need_restart)
         }
     }
 
-    printf("Finish timeout\n");
+    printf("Finish timeout.\n");
 
     close_fd(&epoll_fd);
     close_fd(&sig_fd);
     close_fd(&timer_fd);
+
     ret = delete_signal_handling();
     if (EXIT_SUCCESS != ret)
     {
         printf("delete_signal_handling() failed.\n");
     }
+
     return EXIT_SUCCESS;
 }

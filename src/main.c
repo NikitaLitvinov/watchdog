@@ -9,15 +9,20 @@
 
 enum
 {
-    TIMEOUT = 5,
+    TIMEOUT_SEC = 5,
 };
 
-int argv_handling(int const argc, char *const *const argv, struct process_info *const process)
+static int argv_handling(int const argc, char *const *const argv, struct process_info *const process)
 {
+    enum {
+        // Exclude from iteration `./watchdog` and `start`.
+        COUNT_OF_SERVICE_PARAM = 2,
+    };
     int ret = EXIT_SUCCESS;
     char const example_str[] = "Input process name with param for controlling.\n" \
                                   "Example: ./watchdog start <process_name> [args]";
-    if (argc > 2)
+
+    if (argc > COUNT_OF_SERVICE_PARAM)
     {
         size_t len = 0;
 
@@ -29,17 +34,19 @@ int argv_handling(int const argc, char *const *const argv, struct process_info *
 
         process->process_name = argv[2];
 
-        for (int i = 2; i < argc; ++i)
+        for (int i = COUNT_OF_SERVICE_PARAM; i < argc; ++i)
         {
             len += strlen(argv[i]);
         }
+
         process->process_cmd = malloc(len * sizeof(char) + argc);
         if (NULL == process->process_cmd)
         {
             printf("malloc() failed. %s", strerror(errno));
             return EXIT_FAILURE;
         }
-        for (int i = 2; i < argc; ++i)
+
+        for (int i = COUNT_OF_SERVICE_PARAM; i < argc; ++i)
         {
             strcat(process->process_cmd, argv[i]);
             strcat(process->process_cmd, " ");
@@ -76,10 +83,10 @@ int main(int argc, char **argv)
             break;
         }
 
-        printf("Process will be restart with timeout %d.\n"
-               "To stop restart and exit press Ctrl-C.\n", TIMEOUT);
+        printf("Process will be restart with timeout %d sec.\n"
+               "To stop restart and exit press Ctrl-C.\n", TIMEOUT_SEC);
 
-        ret = timer_for_restart(TIMEOUT, &need_restart);
+        ret = timer_for_restart(TIMEOUT_SEC, &need_restart);
         if (EXIT_SUCCESS != ret || false == need_restart)
         {
             break;

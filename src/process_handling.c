@@ -7,7 +7,7 @@
 
 #include "process_handling.h"
 
-void signal_handling_do_noting(int const sig __attribute__((unused)))
+static void signal_handling_do_noting(int const sig __attribute__((unused)))
 {
 }
 
@@ -20,7 +20,7 @@ int start_process(struct process_info *const process)
     pid = vfork();
     if (0 > pid)
     {
-        printf("fork() failed.\n");
+        printf("vfork() failed.\n");
         return EXIT_FAILURE;
     }
 
@@ -29,6 +29,7 @@ int start_process(struct process_info *const process)
         char *const cmd[] = {"/bin/sh", "-c", process->process_cmd, NULL};
 
         printf("Process %s start.\n", process->process_name);
+
         ret = execv("/bin/sh", cmd);
         _exit(ret);
     }
