@@ -30,7 +30,7 @@ int argv_handling(int const argc, char *const *const argv, struct process_info *
 
         for (int i = 2; i < argc; ++i)
         {
-            len = strlen(argv[i]);
+            len += strlen(argv[i]);
         }
         process->process_cmd = malloc(len * sizeof(char) + argc);
         if (NULL == process->process_cmd)
